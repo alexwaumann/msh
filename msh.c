@@ -14,7 +14,7 @@
 #include <string.h>
 #include <signal.h>
 
-#define WHITESAPCE " \t\n"      // We want to split our command line up into tokens
+#define WHITESPACE " \t\n"      // We want to split our command line up into tokens
                                 // so we need to define what delimits our tokens.
                                 // In this case white space
                                 // will separate the tokens on our command line
@@ -41,7 +41,6 @@ int main()
          * is no input
          */
         while( !fgets (cmd_str, MAX_COMMAND_SIZE, stdin) );
-
         // Parse input
         char * token[MAX_NUM_ARGUEMENTS];
 
@@ -61,13 +60,13 @@ int main()
         char * working_root = working_str;
 
         // Tokenize the input strings with whitespace used as the delimiter
-        while( ( (arg_ptr = strsep( &working_str, WHITESAPCE )) != NULL) &&
+        while( ( (arg_ptr = strsep( &working_str, WHITESPACE )) != NULL) &&
                                   (token_count < MAX_NUM_ARGUEMENTS) )
         {
             token[token_count] = strndup( arg_ptr, MAX_COMMAND_SIZE );
             if( strlen( token[token_count] ) == 0 )
             {
-                token[token_count] = NULL;
+                token[token_count] = "\0";
             }
             token_count++;
         }
@@ -85,5 +84,6 @@ int main()
         }
 
     }
+    free ( cmd_str );
     return 0;
 }
