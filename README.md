@@ -4,7 +4,6 @@ Mav shell (msh) is a basic shell program that I wrote for my Operating Systems c
 up to 10 command line parameters in addition to the command.
 
 Some Features:
-  * supports |
   * ctrl-z suspends a process
   * ctrl-c stops the running process (won't kill msh)
   * `bg` will background a suspended process
