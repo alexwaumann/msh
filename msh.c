@@ -1,11 +1,9 @@
 /*
+ * Name: Alejandro Waumann
+ * ID: 1000944576
+ */
 
-    Name: Alejandro Waumann
-    ID: 1000944576
-    Using Trevor Bakker's code for parsing user input into tokens:
-    https://github.com/CSE3320/Shell-Assignment/blob/master/mfs.c
-*/
-
+#define _GNU_SOURCE 1
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/wait.h>
@@ -14,76 +12,94 @@
 #include <string.h>
 #include <signal.h>
 
-#define WHITESPACE " \t\n"      // We want to split our command line up into tokens
-                                // so we need to define what delimits our tokens.
-                                // In this case white space
-                                // will separate the tokens on our command line
+/*
+ * We will use WHITESPACE as the delimiter when we split
+ * the command line arguments into tokens
+ */
+#define WHITESPACE " \t\n"
 
-#define MAX_COMMAND_SIZE 255    // The maximum command line size
+#define MAX_COMMAND_SIZE 255
 
-#define MAX_NUM_ARGUEMENTS 11   // Mav shell only supports a command with 10 parameters
+/* Mav shell only supports a command with 10 parameters */
+#define MAX_NUM_ARGUEMENTS 11
+
+int tokenize_cmd( char *cmd_str, char **token);
 
 int main()
 {
-
     char * cmd_str = (char *) malloc( MAX_COMMAND_SIZE );
 
     while( 1 )
     {
-        // Print out the msh prompt
+        /* msh command prompt */
         printf("msh> ");
 
         /*
-         * Read the command from the commandline. The
-         * maximum command that will be read is MAX_COMMAND_SIZE
-         * This while command will wait here until the user
-         * inputs something since fgets returns NULL when there
-         * is no input
+         * Read the command from the command line. This while command
+         * will wait here until the user inputs something since fgets
+         * returns NULL when there is no input
          */
-        while( !fgets (cmd_str, MAX_COMMAND_SIZE, stdin) );
-        // Parse input
+        memset(cmd_str, '\0', MAX_COMMAND_SIZE);
+        while( !fgets( cmd_str, MAX_COMMAND_SIZE, stdin ) );
+
+        /* Parse input */
         char * token[MAX_NUM_ARGUEMENTS];
+        int token_count = tokenize_cmd(cmd_str, token);
+        /* cmd contains the command from command line string */
+        char * cmd = token[0];
 
-        int token_count = 0;
-
-        // Pointer to point to the token
-        // parsed by strsep
-        char * arg_ptr;
-
-        char * working_str = strdup( cmd_str );
-
-        /*
-         * we are going to move the working_str pointer so
-         * keep track of its original value so we can deallocate
-         * the correct amount at the end
-         */
-        char * working_root = working_str;
-
-        // Tokenize the input strings with whitespace used as the delimiter
-        while( ( (arg_ptr = strsep( &working_str, WHITESPACE )) != NULL) &&
-                                  (token_count < MAX_NUM_ARGUEMENTS) )
+        if( ( strcmp( cmd, "exit") == 0 ) || ( strcmp( cmd, "quit" ) == 0 ) )
         {
-            token[token_count] = strndup( arg_ptr, MAX_COMMAND_SIZE );
-            if( strlen( token[token_count] ) == 0 )
-            {
-                token[token_count] = "\0";
-            }
-            token_count++;
-        }
-
-        free( working_root );
-
-        // check if any arguments first
-        // exit program on 'exit' or 'quit' cmd
-        if( ( strcmp( token[0], "exit" ) == 0 ) ||
-            ( strcmp( token[0], "quit" ) == 0 ) )
-        {
-            // exit while loop and free memory
-            // exit(0) and return(0) are equivalent
+            // cleanup function
             break;
         }
-
     }
-    free ( cmd_str );
-    return 0;
+
+    free( cmd_str );
+}
+
+/*
+ * Name: tokenize_cmd
+ * Parameters:
+ *      char *cmd_str (command line arguments string)
+ *      char **token  (array to store tokens in)
+ * Return Value:
+ *      returns int with # of valid tokens
+ * Description: tokenizes the command line string using
+ *              WHITESPACE as the delimiter
+ */
+int tokenize_cmd( char *cmd_str, char **token )
+{
+
+    /* arg_ptr will point to the token parsed by strsep */
+    char * arg_ptr;
+    char * working_str = strdup( cmd_str );
+
+    /*
+     * track the original allocated space to deallocate the correct
+     * amount of space since the working_str pointer will be moving
+     */
+    char * working_root = working_str;
+
+    /* Tokenize cmd_str with WHITESPACE as the demiliter */
+    int arg_count = 0;      // tracks # of total of arguments
+    int token_count = 0;    // tracks # of valid arguments
+    while( ( (arg_ptr = strsep( &working_str, WHITESPACE )) != NULL ) &&
+             ( arg_count < MAX_NUM_ARGUEMENTS ) )
+    {
+        char * temp = strndup( arg_ptr, MAX_COMMAND_SIZE );
+        if( strcmp(temp, "") != 0 )
+        {
+            token[token_count] = temp;
+            token_count++;
+        }
+        else
+        {
+            free( temp );   // no need to keep temp's value
+        }
+        arg_count++;
+    }
+
+    free( working_root );
+    return token_count;
 }
