@@ -26,6 +26,7 @@
 
 int tokenize_cmd( char *cmd_str, char **token );
 int add_history_entry( char *cmd_str, char **history, int history_count );
+int add_pid_entry( pid_t pid, pid_t *pidlist, int pid_count );
 void cleanup_token( char **token, int token_count );
 void cleanup_history( char **history, int history_count );
 
@@ -36,6 +37,10 @@ int main()
     /* Track history of last 10 commands */
     char * history[MAX_HISTORY_SIZE];
     int history_count = 0;
+
+    /* Track PIDs for the last 10 processes spawned */
+    pid_t pidlist[MAX_HISTORY_SIZE];
+    int pid_count = 0;
 
     while( 1 )
     {
@@ -74,8 +79,18 @@ int main()
                 printf("%i: %s", i, history[i]);
             }
         }
+        else if ( strcmp( cmd, "showpids\0" ) == 0 )
+        {
+            /* Prints a log of PIDs of the last 10 processes spawned */
+            int i;
+            for( i = 0; i < pid_count; i++ )
+            {
+                printf("%i: %d\n", i, pidlist[i]);
+            }
+        }
         else if( strcmp( cmd, "cd\0" ) == 0 )
         {
+            /* change directories */
             int failed = chdir(token[1]);
             if( failed )
             {
@@ -84,7 +99,7 @@ int main()
         }
         else if( strcmp( cmd, "\0" ) != 0 )
         {
-            
+            /* execute a command with the given arguements */
             char location1[MAX_COMMAND_SIZE] = "./";
             char location2[MAX_COMMAND_SIZE] = "/usr/local/bin/";
             char location3[MAX_COMMAND_SIZE] = "/usr/bin/";
@@ -96,6 +111,7 @@ int main()
             strcat(location4, cmd);
 
             pid_t child_pid = fork();
+            pid_count = add_pid_entry(child_pid, pidlist, pid_count);
             int status;
 
             if( child_pid == 0 )
@@ -218,6 +234,39 @@ int add_history_entry( char *cmd_str, char **history, int history_count )
     }
 
     return history_count;
+}
+
+/*
+ * Name: add_pid_entry
+ * Parameters:
+ *      pid_t pid (pid to add to list)
+ *      pid_t *pidlist (array to store pid entries in)
+ *      int pid_count (running count of pid entries - stops at 10)
+ * Return Value:
+ *      returns int with # of pid entries
+ * Description: Manages adding entries into pid history log. After 10 entries,
+ *              entries are all shifted up one (oldest entry is overwritten)
+ *              and the new one is added to the bottom of the log
+ */
+int add_pid_entry( pid_t pid, pid_t *pidlist, int pid_count )
+{
+    if( pid_count < MAX_HISTORY_SIZE )
+    {
+        pidlist[pid_count] = pid;
+        pid_count++;
+    }
+    else
+    /* shift entries up 1 entry to make room for the new entry */
+    {
+        int i;
+        for( i = 1; i < MAX_HISTORY_SIZE; i++ )
+        {
+            pidlist[i-1] = pidlist[i];
+        } 
+        pidlist[MAX_HISTORY_SIZE - 1] = pid;
+    }
+
+    return pid_count;
 }
 
 /*
