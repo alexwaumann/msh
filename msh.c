@@ -19,15 +19,23 @@
 #define WHITESPACE " \t\n"
 
 #define MAX_COMMAND_SIZE 255
+#define MAX_HISTORY_SIZE 10
 
 /* Mav shell only supports a command with 10 parameters */
 #define MAX_NUM_ARGUEMENTS 11
 
-int tokenize_cmd( char *cmd_str, char **token);
+int tokenize_cmd( char *cmd_str, char **token );
+int add_history_entry( char *cmd_str, char **history, int history_count );
+void cleanup_token( char **token, int token_count );
+void cleanup_history( char **history, int history_count );
 
 int main()
 {
     char * cmd_str = (char *) malloc( MAX_COMMAND_SIZE );
+
+    /* Track history of last 10 commands */
+    char * history[MAX_HISTORY_SIZE];
+    int history_count = 0;
 
     while( 1 )
     {
@@ -45,17 +53,37 @@ int main()
         /* Parse input */
         char * token[MAX_NUM_ARGUEMENTS];
         int token_count = tokenize_cmd(cmd_str, token);
+
+        /* update the history with the command */
+        history_count = add_history_entry( cmd_str, history, history_count );
+
         /* cmd contains the command from command line string */
         char * cmd = token[0];
 
-        if( ( strcmp( cmd, "exit") == 0 ) || ( strcmp( cmd, "quit" ) == 0 ) )
+        if( ( strcmp( cmd, "exit\0") == 0 ) || ( strcmp( cmd, "quit\0" ) == 0 ) )
         {
-            // cleanup function
+            cleanup_token( token, token_count );
             break;
         }
+        else if( strcmp( cmd, "history\0" ) == 0 )
+        {
+            /* Print the history log */
+            int i;
+            for( i = 0; i < history_count; i++ )
+            {
+                printf("%i: %s", i, history[i]);
+            }
+        }
+
+        /* free allocated data in token array */
+        cleanup_token( token, token_count );
     }
 
     free( cmd_str );
+    /* free allocated data in history array */
+    cleanup_history( history, history_count );
+
+    return 0;
 }
 
 /*
@@ -65,7 +93,7 @@ int main()
  *      char **token  (array to store tokens in)
  * Return Value:
  *      returns int with # of valid tokens
- * Description: tokenizes the command line string using
+ * Description: Tokenizes the command line string using
  *              WHITESPACE as the delimiter
  */
 int tokenize_cmd( char *cmd_str, char **token )
@@ -100,6 +128,89 @@ int tokenize_cmd( char *cmd_str, char **token )
         arg_count++;
     }
 
+    /*
+     * If there were no valid tokens then add an empty
+     * string for token[0] to indicate an empty command
+     */
+    if( token_count == 0 )
+    {
+        token[0] = "\0";
+    }
+
     free( working_root );
     return token_count;
+}
+
+/*
+ * Name: add_history_entry
+ * Parameters:
+ *      char *cmd_str (command line arguements string)
+ *      char **history (array to store history entries in)
+ *      int history_count (running count of history entries - stops at 10)
+ * Return Value:
+ *      returns int with # of history entries
+ * Description: Manages adding entries into history log. After 10 entries,
+ *              entries are all shifted up one (oldest entry is deleted/freed)
+ *              and the new one is added to the bottom of the log
+ */
+int add_history_entry( char *cmd_str, char **history, int history_count )
+{
+    /* 
+     * allocate new memory to store the command since cmd_str
+     * will be overwritten on next command
+     */
+    char * cmd = strndup( cmd_str, MAX_COMMAND_SIZE );
+
+    if( history_count < MAX_HISTORY_SIZE )
+    {
+        history[history_count] = cmd;
+        history_count++;
+    }
+    else
+    /* shift entries up 1 entry to make room for the new entry */
+    {
+        int i;
+        free ( history[0] );
+        for( i = 1; i < MAX_HISTORY_SIZE; i++ )
+        {
+            history[i-1] = history[i];
+        } 
+        history[MAX_HISTORY_SIZE - 1] = cmd;
+    }
+
+    return history_count;
+}
+
+/*
+ * Name: cleanup_token
+ * Parameters:
+ *      char **token (array where tokens are stored)
+ *      int token_count (# of tokens allocated)
+ * Return Value:
+ *      no return value
+ * Description: Frees the dynamically allocated data in **token
+ */
+void cleanup_token( char**token, int token_count )
+{
+    int i;
+    for( i = 0; i < token_count; i++ ) {
+        free( token[i] );
+    }
+}
+
+/*
+ * Name: cleanup_history
+ * Parameters:
+ *      char **history (array where history entries are stored)
+ *      int history_count (# of history entries allocated)
+ * Return Value:
+ *      no return value
+ * Description: Frees the dynamically allocated data in **history
+ */
+void cleanup_history( char **history, int history_count )
+{
+    int i;
+    for( i = 0; i < history_count; i++ ) {
+        free( history[i] );
+    }
 }
