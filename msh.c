@@ -51,7 +51,7 @@ int main()
         while( !fgets( cmd_str, MAX_COMMAND_SIZE, stdin ) );
 
         /* Parse input */
-        char * token[MAX_NUM_ARGUEMENTS];
+        char * token[MAX_NUM_ARGUEMENTS + 1];   // extra spot for NULL pointer
         int token_count = tokenize_cmd(cmd_str, token);
 
         /* update the history with the command */
@@ -73,6 +73,34 @@ int main()
             {
                 printf("%i: %s", i, history[i]);
             }
+        }
+        else if( strcmp( cmd, "\0" ) != 0 )
+        {
+            
+            char location1[MAX_COMMAND_SIZE] = "./";
+            char location2[MAX_COMMAND_SIZE] = "/usr/local/bin/";
+            char location3[MAX_COMMAND_SIZE] = "/usr/bin/";
+            char location4[MAX_COMMAND_SIZE] = "/bin/";
+
+            strcat(location1, cmd);
+            strcat(location2, cmd);
+            strcat(location3, cmd);
+            strcat(location4, cmd);
+
+            pid_t child_pid = fork();
+            int status;
+
+            if( child_pid == 0 )
+            {
+                execv(location1, token);
+                execv(location2, token);
+                execv(location3, token);
+                execv(location4, token);
+                printf("%s: Command not found\n", cmd);
+                exit( EXIT_SUCCESS );
+            }
+
+            waitpid( child_pid, &status, 0 );
         }
 
         /* free allocated data in token array */
@@ -123,6 +151,13 @@ int tokenize_cmd( char *cmd_str, char **token )
         arg_count++;
     }
 
+    /* 
+     * Append a NULL pointer; will never be out of bounds since
+     * token_count is capped at MAX_NUM_ARGUEMENTS, which is
+     * 1 less than the allocated spots in char * token[]
+     */
+    token[token_count] = NULL;
+
     /*
      * If there were no valid tokens then add an empty
      * string for token[0] to indicate an empty command
@@ -130,6 +165,7 @@ int tokenize_cmd( char *cmd_str, char **token )
     if( token_count == 0 )
     {
         token[0] = "\0";
+        token[1] = NULL;
     }
 
     free( working_root );
