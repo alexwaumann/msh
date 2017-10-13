@@ -74,6 +74,14 @@ int main()
                 printf("%i: %s", i, history[i]);
             }
         }
+        else if( strcmp( cmd, "cd\0" ) == 0 )
+        {
+            int failed = chdir(token[1]);
+            if( failed )
+            {
+                printf("-msh: cd: %s: No such file or directory\n", token[1]);
+            }
+        }
         else if( strcmp( cmd, "\0" ) != 0 )
         {
             
