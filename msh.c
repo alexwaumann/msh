@@ -115,15 +115,10 @@ int tokenize_cmd( char *cmd_str, char **token )
     while( ( (arg_ptr = strsep( &working_str, WHITESPACE )) != NULL ) &&
              ( arg_count < MAX_NUM_ARGUEMENTS ) )
     {
-        char * temp = strndup( arg_ptr, MAX_COMMAND_SIZE );
-        if( strcmp(temp, "") != 0 )
+        if( strcmp(arg_ptr, "") != 0 )
         {
-            token[token_count] = temp;
+            token[token_count] = strndup( arg_ptr, MAX_COMMAND_SIZE );
             token_count++;
-        }
-        else
-        {
-            free( temp );   // no need to keep temp's value
         }
         arg_count++;
     }
