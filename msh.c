@@ -27,6 +27,7 @@
 int tokenize_cmd( char *cmd_str, char **token );
 int add_history_entry( char *cmd_str, char **history, int history_count );
 int add_pid_entry( pid_t pid, pid_t *pidlist, int pid_count );
+int execute_cmd( char *cmd, char **token );
 void cleanup_token( char **token, int token_count );
 void cleanup_history( char **history, int history_count );
 
@@ -100,31 +101,8 @@ int main()
         else if( strcmp( cmd, "\0" ) != 0 )
         {
             /* execute a command with the given arguements */
-            char location1[MAX_COMMAND_SIZE] = "./";
-            char location2[MAX_COMMAND_SIZE] = "/usr/local/bin/";
-            char location3[MAX_COMMAND_SIZE] = "/usr/bin/";
-            char location4[MAX_COMMAND_SIZE] = "/bin/";
-
-            strcat(location1, cmd);
-            strcat(location2, cmd);
-            strcat(location3, cmd);
-            strcat(location4, cmd);
-
-            pid_t child_pid = fork();
+            pid_t child_pid = execute_cmd(cmd, token);
             pid_count = add_pid_entry(child_pid, pidlist, pid_count);
-            int status;
-
-            if( child_pid == 0 )
-            {
-                execv(location1, token);
-                execv(location2, token);
-                execv(location3, token);
-                execv(location4, token);
-                printf("%s: Command not found\n", cmd);
-                exit( EXIT_SUCCESS );
-            }
-
-            waitpid( child_pid, &status, 0 );
         }
 
         /* free allocated data in token array */
@@ -284,6 +262,45 @@ void cleanup_token( char**token, int token_count )
     for( i = 0; i < token_count; i++ ) {
         free( token[i] );
     }
+}
+
+/*
+ * Name: execute_cmd
+ * Parameters:
+ *      char *cmd (command to execute)
+ *      char **token (argument vector)
+ * Return Value:
+ *      returns a pid_t of the child process
+ * Description: Executes a given command with the given parameters
+ *              given in the arguement vector
+ */
+int execute_cmd( char *cmd, char **token )
+{
+    char location1[MAX_COMMAND_SIZE] = "./";
+    char location2[MAX_COMMAND_SIZE] = "/usr/local/bin/";
+    char location3[MAX_COMMAND_SIZE] = "/usr/bin/";
+    char location4[MAX_COMMAND_SIZE] = "/bin/";
+
+    strcat(location1, cmd);
+    strcat(location2, cmd);
+    strcat(location3, cmd);
+    strcat(location4, cmd);
+
+    pid_t child_pid = fork();
+    int status;
+
+    if( child_pid == 0 )
+    {
+        execv(location1, token);
+        execv(location2, token);
+        execv(location3, token);
+        execv(location4, token);
+        printf("%s: Command not found\n", cmd);
+        exit( EXIT_SUCCESS );
+    }
+
+    waitpid( child_pid, &status, 0 );
+    return child_pid;
 }
 
 /*
