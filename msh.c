@@ -19,7 +19,8 @@
 #define WHITESPACE " \t\n"
 
 #define MAX_COMMAND_SIZE 255
-#define MAX_HISTORY_SIZE 10
+#define MAX_PIDLIST_SIZE 10
+#define MAX_HISTORY_SIZE 15
 
 /* Mav shell only supports a command with 10 parameters */
 #define MAX_NUM_ARGUEMENTS 11
@@ -40,7 +41,7 @@ int main()
     int history_count = 0;
 
     /* Track PIDs for the last 10 processes spawned */
-    pid_t pidlist[MAX_HISTORY_SIZE];
+    pid_t pidlist[MAX_PIDLIST_SIZE];
     int pid_count = 0;
 
     while( 1 )
