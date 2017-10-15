@@ -40,22 +40,47 @@ int main()
     char * history[MAX_HISTORY_SIZE];
     int history_count = 0;
 
+    /* 
+     * Track if executing a command from history
+     * 
+     * cmd_from_history: represents a boolean value
+     * 0: NOT executing cmd from history
+     * 1: executing cmd from history
+     * 
+     * history_index: the index from history log to execute
+     * default value: -1 to indicate no index has been set
+     */
+    int cmd_from_history = 0;
+    int history_index = -1;
+
     /* Track PIDs for the last 10 processes spawned */
     pid_t pidlist[MAX_PIDLIST_SIZE];
     int pid_count = 0;
 
     while( 1 )
     {
-        /* msh command prompt */
-        printf("msh> ");
 
-        /*
-         * Read the command from the command line. This while command
-         * will wait here until the user inputs something since fgets
-         * returns NULL when there is no input
-         */
-        memset(cmd_str, '\0', MAX_COMMAND_SIZE);
-        while( !fgets( cmd_str, MAX_COMMAND_SIZE, stdin ) );
+        if( !cmd_from_history )
+        {
+            /* msh command prompt */
+            printf("msh> ");
+    
+            /*
+            * Read the command from the command line. This while command
+            * will wait here until the user inputs something since fgets
+            * returns NULL when there is no input
+            */
+            memset(cmd_str, '\0', MAX_COMMAND_SIZE);
+            while( !fgets( cmd_str, MAX_COMMAND_SIZE, stdin ) );
+        }
+        else
+        {
+            char * entry_from_history = history[history_index];
+            strncpy( cmd_str, entry_from_history, MAX_COMMAND_SIZE );
+        }
+
+        /* reset cmd_from_history to false to prevent an endless loop */
+        cmd_from_history = 0;
 
         /* Parse input */
         char * token[MAX_NUM_ARGUEMENTS + 1];   // extra spot for NULL pointer
@@ -99,11 +124,26 @@ int main()
                 printf("-msh: cd: %s: No such file or directory\n", token[1]);
             }
         }
-        else if( strcmp( cmd, "\0" ) != 0 )
+        else if( ( strcmp( cmd, "\0" ) != 0 ) && ( cmd[0] != '!' ) )
         {
             /* execute a command with the given arguements */
             pid_t child_pid = execute_cmd(cmd, token);
             pid_count = add_pid_entry(child_pid, pidlist, pid_count);
+        }
+        else if ( ( strcmp( cmd, "\0" ) != 0 ) && ( cmd[0] == '!' ) )
+        {
+            /* determine if command from history to be executed is a valid entry */
+            history_index = cmd[1] - 48;    // ASCII char to decimal value
+            if( ( history_index >= 0 ) && ( history_index < history_count ) )
+            {
+                /* command from history is a valid entry */
+                cmd_from_history = 1;
+            }
+            else
+            {
+                printf("Command not in history\n");
+                history_index = -1;
+            }
         }
 
         /* free allocated data in token array */
