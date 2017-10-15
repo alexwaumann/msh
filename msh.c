@@ -229,27 +229,31 @@ int tokenize_cmd( char *cmd_str, char **token )
  */
 int add_history_entry( char *cmd_str, char **history, int history_count )
 {
-    /* 
-     * allocate new memory to store the command since cmd_str
-     * will be overwritten on next command
-     */
-    char * cmd = strndup( cmd_str, MAX_COMMAND_SIZE );
-
-    if( history_count < MAX_HISTORY_SIZE )
+    /* add new entry if not the "!n" command */
+    if( cmd_str[0] != '!' )
     {
-        history[history_count] = cmd;
-        history_count++;
-    }
-    else
-    /* shift entries up 1 entry to make room for the new entry */
-    {
-        int i;
-        free ( history[0] );
-        for( i = 1; i < MAX_HISTORY_SIZE; i++ )
+        /* 
+        * allocate new memory to store the command since cmd_str
+        * will be overwritten on next command
+        */
+        char * cmd = strndup( cmd_str, MAX_COMMAND_SIZE );
+    
+        if( history_count < MAX_HISTORY_SIZE )
         {
-            history[i-1] = history[i];
-        } 
-        history[MAX_HISTORY_SIZE - 1] = cmd;
+            history[history_count] = cmd;
+            history_count++;
+        }
+        else
+        /* shift entries up 1 entry to make room for the new entry */
+        {
+            int i;
+            free ( history[0] );
+            for( i = 1; i < MAX_HISTORY_SIZE; i++ )
+            {
+                history[i-1] = history[i];
+            } 
+            history[MAX_HISTORY_SIZE - 1] = cmd;
+        }
     }
 
     return history_count;
