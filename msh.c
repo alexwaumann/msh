@@ -390,5 +390,3 @@ void cleanup_history( char **history, int history_count )
         free( history[i] );
     }
 }
-
-static void handle_signal( int sig ) {}
