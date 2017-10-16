@@ -32,8 +32,21 @@ int execute_cmd( char *cmd, char **token );
 void cleanup_token( char **token, int token_count );
 void cleanup_history( char **history, int history_count );
 
+static void handle_signal( int sig );
+
 int main()
 {
+
+    struct sigaction act;
+    memset( &act, '\0', sizeof(act) );
+    act.sa_handler = &handle_signal;
+
+    if( sigaction( SIGINT, &act, NULL ) < 0 )
+    {
+        perror( "sigaction: " );
+        return 1;
+    }
+
     char * cmd_str = (char *) malloc( MAX_COMMAND_SIZE );
 
     /* Track history of last 10 commands */
@@ -363,4 +376,8 @@ void cleanup_history( char **history, int history_count )
     for( i = 0; i < history_count; i++ ) {
         free( history[i] );
     }
+}
+
+static void handle_signal( int sig ) {
+    printf("\n");
 }
