@@ -141,8 +141,7 @@ int main()
             /* background suspended process if one exists */
             if( tstp_pid != -1 )
             {
-                kill( -tstp_pid, SIGCONT );
-                tstp_pid = -1;
+                kill( tstp_pid, SIGCONT );
             }
             else
             {
@@ -392,10 +391,4 @@ void cleanup_history( char **history, int history_count )
     }
 }
 
-// static void handle_signal( int sig ) {
-//     if( sig == SIGCHLD )
-//     {
-//         int status;
-//         waitpid( -1, &status, WNOHANG );
-//     }
-// }
+static void handle_signal( int sig ) {}
