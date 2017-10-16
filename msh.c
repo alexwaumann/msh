@@ -28,23 +28,19 @@
 int tokenize_cmd( char *cmd_str, char **token );
 int add_history_entry( char *cmd_str, char **history, int history_count );
 int add_pid_entry( pid_t pid, pid_t *pidlist, int pid_count );
-int execute_cmd( char *cmd, char **token );
 void cleanup_token( char **token, int token_count );
 void cleanup_history( char **history, int history_count );
 
-static void handle_signal( int sig );
-
 int main()
 {
-
-    struct sigaction act;
-    memset( &act, '\0', sizeof(act) );
-    act.sa_handler = &handle_signal;
-
-    if( sigaction( SIGINT, &act, NULL ) < 0 )
+    /* Block SIGINT and SIGTSTP in msh process */
+    sigset_t newmask;
+    sigemptyset( &newmask );
+    sigaddset( &newmask, SIGINT );
+    sigaddset( &newmask, SIGTSTP );
+    if( sigprocmask( SIG_BLOCK, &newmask, NULL ) < 0 )
     {
-        perror( "sigaction: " );
-        return 1;
+        perror( "sigprocmask: " );
     }
 
     char * cmd_str = (char *) malloc( MAX_COMMAND_SIZE );
@@ -69,6 +65,9 @@ int main()
     /* Track PIDs for the last 10 processes spawned */
     pid_t pidlist[MAX_PIDLIST_SIZE];
     int pid_count = 0;
+
+    /* Track suspended process: -1 indicates no current process suspended */
+    pid_t tstp_pid = -1;
 
     while( 1 )
     {
@@ -137,10 +136,64 @@ int main()
                 printf("-msh: cd: %s: No such file or directory\n", token[1]);
             }
         }
+        else if( strcmp( cmd, "bg\0" ) == 0 )
+        {
+            /* background suspended process if one exists */
+            if( tstp_pid != -1 )
+            {
+                kill( -tstp_pid, SIGCONT );
+                tstp_pid = -1;
+            }
+            else
+            {
+                printf( "-msh: bg: No suspended process found\n" );
+            }
+        }
         else if( ( strcmp( cmd, "\0" ) != 0 ) && ( cmd[0] != '!' ) )
         {
             /* execute a command with the given arguements */
-            pid_t child_pid = execute_cmd(cmd, token);
+            char location1[MAX_COMMAND_SIZE] = "./";
+            char location2[MAX_COMMAND_SIZE] = "/usr/local/bin/";
+            char location3[MAX_COMMAND_SIZE] = "/usr/bin/";
+            char location4[MAX_COMMAND_SIZE] = "/bin/";
+        
+            strcat(location1, cmd);
+            strcat(location2, cmd);
+            strcat(location3, cmd);
+            strcat(location4, cmd);
+        
+            pid_t child_pid = fork();
+            int status;
+        
+            if( child_pid == 0 )
+            {
+                /* Unblock SIGINT and SIGTSTP signals for child process */
+                if( sigprocmask( SIG_UNBLOCK, &newmask, NULL ) < 0 )
+                {
+                    perror( "sigprocmask: " );
+                }
+        
+                execv(location1, token);
+                execv(location2, token);
+                execv(location3, token);
+                execv(location4, token);
+                printf("%s: Command not found\n", cmd);
+                exit( EXIT_SUCCESS );
+            }
+        
+            waitpid( child_pid, &status, WUNTRACED );
+            if( WIFSTOPPED( status ) && ( tstp_pid == -1 ) )
+            {
+                /* save the PID of suspended process */
+                tstp_pid = child_pid;
+            }
+            else if( WIFSTOPPED( status ) && ( tstp_pid != -1 ) )
+            {
+                /* kill currently suspended process before storing a new one */
+                kill( tstp_pid, SIGINT );
+                tstp_pid = child_pid;
+            }
+
             pid_count = add_pid_entry(child_pid, pidlist, pid_count);
         }
         else if ( ( strcmp( cmd, "\0" ) != 0 ) && ( cmd[0] == '!' ) )
@@ -323,45 +376,6 @@ void cleanup_token( char**token, int token_count )
 }
 
 /*
- * Name: execute_cmd
- * Parameters:
- *      char *cmd (command to execute)
- *      char **token (argument vector)
- * Return Value:
- *      returns a pid_t of the child process
- * Description: Executes a given command with the given parameters
- *              given in the arguement vector
- */
-int execute_cmd( char *cmd, char **token )
-{
-    char location1[MAX_COMMAND_SIZE] = "./";
-    char location2[MAX_COMMAND_SIZE] = "/usr/local/bin/";
-    char location3[MAX_COMMAND_SIZE] = "/usr/bin/";
-    char location4[MAX_COMMAND_SIZE] = "/bin/";
-
-    strcat(location1, cmd);
-    strcat(location2, cmd);
-    strcat(location3, cmd);
-    strcat(location4, cmd);
-
-    pid_t child_pid = fork();
-    int status;
-
-    if( child_pid == 0 )
-    {
-        execv(location1, token);
-        execv(location2, token);
-        execv(location3, token);
-        execv(location4, token);
-        printf("%s: Command not found\n", cmd);
-        exit( EXIT_SUCCESS );
-    }
-
-    waitpid( child_pid, &status, 0 );
-    return child_pid;
-}
-
-/*
  * Name: cleanup_history
  * Parameters:
  *      char **history (array where history entries are stored)
@@ -378,6 +392,10 @@ void cleanup_history( char **history, int history_count )
     }
 }
 
-static void handle_signal( int sig ) {
-    printf("\n");
-}
+// static void handle_signal( int sig ) {
+//     if( sig == SIGCHLD )
+//     {
+//         int status;
+//         waitpid( -1, &status, WNOHANG );
+//     }
+// }
